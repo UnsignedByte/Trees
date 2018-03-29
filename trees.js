@@ -3,64 +3,64 @@
  * @Date:   16:59:19, 27-Mar-2018
  * @Filename: trees.js
  * @Last modified by:   edl
- * @Last modified time: 18:22:06, 28-Mar-2018
+ * @Last modified time: 06:58:04, 29-Mar-2018
  */
-
-
 //the canvas
 var canv = document.getElementById('tree');
 var context = canv.getContext("2d");
+var sizeRatio = 0.5
 
-var maxDepth = 4;
-var rayComplexity = 2;
+var maxDepth = 5;
+var rayComplexity = 1;
+var precision = 1;
 
 //Tree class, houses all attributes
-function Tree(attribs, l, w){
+function Tree(attribs, l, w) {
   this.attribs = attribs;
   this.l = l;
   this.w = w;
-  this.deg = Math.PI/2;
+  this.deg = Math.PI / 2;
   this.depth = 0;
   this.children = new Array();
-  for (var i = 0; i < randFocus(this.attribs["c"]); i++){
+  for (var i = 0; i < randFocus(this.attribs["c"]); i++) {
     this.children.push(new Branch(this));
   }
 }
 
 //Branch class
-function Branch(parent){
+function Branch(parent) {
   this.attribs = parent.attribs;
   this.parent = parent;
-  this.l = this.parent.l*Math.max(0.1,Math.min(1.25, randFocus(this.attribs["l"])));
-  this.w = this.parent.w*Math.max(0.1,Math.min(0.75, randFocus(this.attribs["w"])));
-  this.deg = this.parent.deg+randVal([-1,1])*randFocus(this.attribs["d"]);
-  this.depth = this.parent.depth+1;
-  if (this.depth >= randFocus(new Randobj(parent.attribs["b"], maxDepth)) || this.l<1 || this.w<1){
+  this.l = this.parent.l * Math.max(0.1, Math.min(1.25, randFocus(this.attribs["l"])));
+  this.w = this.parent.w * Math.max(0.1, Math.min(0.75, randFocus(this.attribs["w"])));
+  this.deg = this.parent.deg + randVal([-1, 1]) * randFocus(this.attribs["d"]);
+  this.depth = this.parent.depth + 1;
+  if (this.depth >= Math.min(maxDepth, randFocus(parent.attribs["b"])) || this.l < 1 || this.w < 1) {
     this.children = null;
-  }else{
+  } else {
     this.children = new Array();
-    for (var i = 0; i < randFocus(this.attribs["c"]); i++){
+    for (var i = 0; i < randFocus(this.attribs["c"]); i++) {
       this.children.push(new Branch(this));
     }
   }
 }
 
 //class containing dev, sharpness, foci
-function Randobj(dev, focus){
+function Randobj(dev, focus) {
   this.dev = dev;
   this.focus = focus;
 }
 
 var trees = new Array();
-var nTrees = 250;
+var nTrees = 500;
 
 init();
 
 //initiation
-function init(){
+function init() {
   canv.width = window.innerWidth;
   canv.height = Math.round(0.9 * window.innerHeight);
-  for ( var i = 0; i < nTrees; i++){
+  for (var i = 0; i < nTrees; i++) {
     var t = randTree();
     trees.push([t, getEnergy(t)]);
   }
@@ -68,135 +68,189 @@ function init(){
 }
 
 //Renders one generation
-function gen(){
+function gen() {
+  concTime = Date.now();
   context.clearRect(0, 0, canv.width, canv.height);
-  var Comparator = function(a, b){
-    if (a[1] < b[1]){
+  var Comparator = function(a, b) {
+    if (a[1] < b[1]) {
       return 1;
-    }else if (b[1] < a[1]){
+    } else if (b[1] < a[1]) {
       return -1;
     }
     return 0;
   }
   trees = trees.sort(Comparator);
-  renderTree(canv.width/2, 0, trees[0][0]);
-  console.log(trees[0][1]);
+  renderTree(0, 0, trees[0][0], canv.width / 4, 0);
+  console.log("MAX:", trees[0][1]);
+  renderTree(0, 0, trees[trees.length - 1][0], 3 * canv.width / 4, 0);
+  console.log("MIN:", trees[trees.length - 1][1]);
+  sum = 0;
+  for (var i = 0; i < trees.length; i++) {
+    sum += trees[i][1];
+  }
+  console.log("AVERAGE:", sum / trees.length);
 
-  trees = trees.slice(0, randInt(trees.length/3, 2*trees.length/3));
+  trees = trees.slice(0, randInt(trees.length / 3, 2 * trees.length / 3));
   treechoice = new Randobj(trees.length, 0);
-  while (trees.length < nTrees){
+  while (trees.length < nTrees) {
     var r = Math.abs(Math.round(randFocus(treechoice)));
-    var t = childTree(trees[r][0]);
+    var t;
+    if (randInt(1, 100) === 1) {
+      t = randTree();
+    } else {
+      t = childTree(trees[r][0]);
+    }
     trees.push([t, getEnergy(t)]);
   }
-  console.log("FDONE");
+  console.log("Generation time:", (Date.now() - concTime) / 1000, "seconds")
+  context.fillStyle = '#000000';
+  context.font = '24px Courier';
+  context.fillText("Render time: "+ (Date.now() - concTime) / 1000+ " seconds", 10, 34)
 }
 
-function startRender(){
+function startRender() {
   window.requestAnimationFrame(gen);
 }
 
-function renderTree(x, y, branch){
-  var x1 = x+branch.l*Math.cos(branch.deg);
-  var y1 = y+branch.l*Math.sin(branch.deg);
+function renderIdentical() {
+  context.clearRect(0, 0, canv.width, canv.height);
+  var t = new Tree(trees[0][0].attribs, trees[0][0].l, trees[0][0].w);
+  renderTree(0, 0, t, canv.width / 2, 0);
+  console.log(getEnergy(t));
+}
+
+function rTree() {
+  context.clearRect(0, 0, canv.width, canv.height);
+  var rand = randInt(0, trees.length - 1);
+  renderTree(0, 0, trees[rand][0], canv.width / 2, 0);
+  console.log(trees[rand][1]);
+}
+
+function renderTree(x, y, branch, sX, sY) {
+  var x1 = x + branch.l * Math.cos(branch.deg);
+  var y1 = y + branch.l * Math.sin(branch.deg);
   context.beginPath();
-  context.moveTo(x, canv.height-y);
-  context.lineWidth = branch.w;
-  if (branch.children){
+  context.moveTo(x * sizeRatio + sX, canv.height - y * sizeRatio + sY);
+  context.lineWidth = branch.w * sizeRatio;
+  if (branch.children) {
     context.strokeStyle = "#6F370F";
-  }else{
+  } else {
     context.strokeStyle = "#22b522";
   }
-  context.lineTo(x1, canv.height-y1);
+  context.lineTo(x1 * sizeRatio + sX, canv.height - y1 * sizeRatio + sY);
   context.stroke();
-  if (branch.children){
-    for (var i = 0; i < branch.children.length; i++){
-      renderTree(x1, y1, branch.children[i]);
+  if (branch.children) {
+    for (var i = 0; i < branch.children.length; i++) {
+      renderTree(x1, y1, branch.children[i], sX, sY);
     }
   }
 }
 
-function getEnergy(tree){
+function getEnergy(tree) {
   var pts = new Array();
   var energy = 0;
-  var getPoints = function(x, y, branch){
-    var x1 = x+branch.l*Math.cos(branch.deg);
-    var y1 = y+branch.l*Math.sin(branch.deg);
-    energy-= branch.l*branch.w;
-    if (branch.children){
-      for (var i = 0; i < branch.children.length; i++){
+  var getPoints = function(x, y, branch) {
+    var x1 = x + branch.l * Math.cos(branch.deg);
+    var y1 = y + branch.l * Math.sin(branch.deg);
+    energy -= branch.l * branch.w;
+    if (branch.children) {
+      for (var i = 0; i < branch.children.length; i++) {
         getPoints(x1, y1, branch.children[i]);
       }
-    }else{
-      pts.push([[x,y], [x1,y1], branch.l, branch.w]);
+    } else {
+      pts.push([
+        [x, y],
+        [x1, y1], branch.l, branch.w
+      ]);
     }
   };
-  getPoints(canv.width/2, 0, tree);
+  getPoints(canv.width / 2, 0, tree);
 
-  for ( var d = 30; d <= 150; d+=30 ){
-    var project = {};
-    var deg = d/180*Math.PI;
-    var rC = Math.abs(rayComplexity*Math.cos(deg+Math.PI/2));
-    for (var i = 0; i < pts.length; i++){
+
+  var project = new Array();
+  project.push(new Array());
+  project.push(new Array())
+
+  for (var d = 30; d <= 150; d += 30) {
+    var s = 0;
+    var deg = d / 180 * Math.PI;
+    var sd = Math.sin(deg);
+    var rC = Math.abs(rayComplexity * sd);
+    for (var i = 0; i < pts.length; i++) {
       var dx, dx1;
-      if (d === 90){
+      if (d === 90) {
         dx = pts[i][0][0];
         dx1 = pts[i][1][0];
-      }else{
-        dx = (Math.tan(deg)*pts[i][0][0]-pts[i][0][1])*Math.sin(deg)/2;
-        dx1 = (Math.tan(deg)*pts[i][1][0]-pts[i][1][1])*Math.sin(deg)/2;
+      } else {
+        var td = Math.tan(deg);
+        dx = (td * pts[i][0][0] - pts[i][0][1]) * sd / 2;
+        dx1 = (td * pts[i][1][0] - pts[i][1][1]) * sd / 2;
       }
-      for (var j = Math.floor(Math.min(dx1, dx)*rC)/rC; j <= Math.ceil(Math.max(dx1, dx)*rC)/rC; j+=rC){
-        if (!(j in project)){
-          project[j] = pts[i][3];
-        }else{
-          project[j] = Math.max(project[j], pts[i][3]);
+      for (var j = Math.floor(Math.min(dx1, dx) * rC) / rC; j <= Math.ceil(Math.max(dx1, dx) * rC) / rC; j += rC) {
+        jr = Math.round(j / precision);
+        var n = 0;
+        if (jr < 0) {
+          n = 1;
+          jr *= -1;
+        }
+        for (var v = project.length; v < jr; v++) {
+          project.push(0);
+        }
+        if (project[jr] != d) {
+          project.push(d);
+          s++;
         }
       }
     }
-    s = 2*rayComplexity*sum(project);
-    energy+=s;
+    s *= 2;
+    energy += s;
   }
   return energy;
 }
 
 //Creates a child tree
-function childTree(tree){
-  attrs = tree.attribs;
-  if (randInt(1, 100) <= 5){
+function childTree(tree) {
+  var attrs = tree.attribs;
+  var l = tree.l;
+  var w = tree.w;
+  if (randInt(1, 100) <= 1) {
     attrs["l"] = new Randobj(randFocus(new Randobj(0.5, tree.attribs["l"].dev)), randFocus(new Randobj(0.25, tree.attribs["l"].focus)));
   }
-  if (randInt(1, 100) <= 5){
+  if (randInt(1, 100) <= 1) {
     attrs["w"] = new Randobj(randFocus(new Randobj(0.5, tree.attribs["w"].dev)), randFocus(new Randobj(0.25, tree.attribs["w"].focus)));
   }
-  if (randInt(1, 100) <= 5){
-    attrs["d"] = new Randobj(randFocus(new Randobj(Math.PI/2, tree.attribs["d"].dev)), randFocus(new Randobj(Math.PI/4, tree.attribs["d"].focus)));
+  if (randInt(1, 100) <= 1) {
+    attrs["d"] = new Randobj(randFocus(new Randobj(Math.PI / 2, tree.attribs["d"].dev)), randFocus(new Randobj(Math.PI / 4, tree.attribs["d"].focus)));
   }
-  if (randInt(1, 100) <= 1){
+  if (randInt(1, 100) <= 1) {
     attrs["c"] = new Randobj(Math.round(randFocus(new Randobj(1, tree.attribs["c"].dev))), Math.round(randFocus(new Randobj(1, tree.attribs["c"].focus))));
   }
-  if (randInt(1, 100) <= 3){
-    attrs["b"] = Math.round(tree.attribs["b"]+randFocus(new Randobj(3, tree.attribs["b"])));
+  if (randInt(1, 100) <= 1) {
+    attrs["b"] = new Randobj(Math.round(randFocus(new Randobj(1, tree.attribs["b"].dev))), randFocus(new Randobj(1, tree.attribs["b"].focus)));
   }
-  var l = Math.max(50,Math.min(175, Math.round(tree.l+randFocus(new Randobj(75, tree.l)))));
-  var w = Math.max(20, Math.min(40, Math.round(tree.w+randFocus(new Randobj(5, tree.w)))));
+  if (randInt(1, 100) <= 1) {
+    l = Math.max(50, Math.min(175, Math.round(tree.l + randFocus(new Randobj(75, tree.l)))));
+  }
+  if (randInt(1, 100) <= 1) {
+    w = Math.max(20, Math.min(40, Math.round(tree.w + randFocus(new Randobj(5, tree.w)))));
+  }
   return new Tree(attrs, l, w);
 }
 
 //Creates a random tree
-function randTree(){
+function randTree() {
   attrs = {};
   attrs["l"] = new Randobj(Math.random(), 0.75);
   attrs["w"] = new Randobj(Math.random(), 0.75);
-  attrs["d"] = new Randobj(90*Math.PI*Math.random()/180, Math.PI*randInt(0, 89)/180);
-  attrs["c"] = new Randobj(randInt(0,2), randInt(3, 5));
-  attrs["b"] = randInt(0, 2)
+  attrs["d"] = new Randobj(90 * Math.PI * Math.random() / 180, Math.PI * randInt(0, 89) / 180);
+  attrs["c"] = new Randobj(randInt(0, 2), randInt(3, 5));
+  attrs["b"] = new Randobj(randInt(0, 2), maxDepth);
   return new Tree(attrs, randInt(75, 150), randInt(20, 40));
 }
 
 //Returns a random number with a focus
-function randFocus (obj) {
-  return obj.dev*Math.pow(2*Math.random()-1, 2)+obj.focus;
+function randFocus(obj) {
+  return obj.dev * Math.pow(2 * Math.random() - 1, 2) + obj.focus;
 }
 
 //Returns a random int between min and max, inclusive.
@@ -209,15 +263,4 @@ function randInt(min, max) {
 //Returns a random value in an array
 function randVal(a) {
   return a[randInt(0, a.length - 1)];
-}
-
-//Credit to https://stackoverflow.com/questions/16449295/how-to-sum-the-values-of-a-javascript-object
-function sum( obj ) {
-  var sum = 0;
-  for( var el in obj ) {
-    if( obj.hasOwnProperty( el ) ) {
-      sum += parseFloat( obj[el] );
-    }
-  }
-  return sum;
 }
