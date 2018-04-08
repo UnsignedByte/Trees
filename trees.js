@@ -3,7 +3,7 @@
  * @Date:   16:59:19, 27-Mar-2018
  * @Filename: trees.js
  * @Last modified by:   edl
- * @Last modified time: 06:58:04, 29-Mar-2018
+ * @Last modified time: 12:12:50, 08-Apr-2018
  */
 //the canvas
 var canv = document.getElementById('tree');
@@ -22,7 +22,7 @@ function Tree(attribs, l, w) {
   this.deg = Math.PI / 2;
   this.depth = 0;
   this.children = new Array();
-  for (var i = 0; i < randFocus(this.attribs["c"]); i++) {
+  for (var i = 0; i < randFocus(this.attribs["c"][0]); i++) {
     this.children.push(new Branch(this));
   }
 }
@@ -31,15 +31,15 @@ function Tree(attribs, l, w) {
 function Branch(parent) {
   this.attribs = parent.attribs;
   this.parent = parent;
-  this.l = this.parent.l * Math.max(0.1, Math.min(1.25, randFocus(this.attribs["l"])));
-  this.w = this.parent.w * Math.max(0.1, Math.min(0.75, randFocus(this.attribs["w"])));
-  this.deg = this.parent.deg + randVal([-1, 1]) * randFocus(this.attribs["d"]);
   this.depth = this.parent.depth + 1;
+  this.l = this.parent.l * Math.max(0.1, Math.min(1.25, randFocus(this.attribs["l"][this.depth-1])));
+  this.w = this.parent.w * Math.max(0.1, Math.min(0.75, randFocus(this.attribs["w"][this.depth-1])));
+  this.deg = this.parent.deg + randVal([-1, 1]) * randFocus(this.attribs["d"][this.depth-1]);
   if (this.depth >= Math.min(maxDepth, randFocus(parent.attribs["b"])) || this.l < 1 || this.w < 1) {
     this.children = null;
   } else {
     this.children = new Array();
-    for (var i = 0; i < randFocus(this.attribs["c"]); i++) {
+    for (var i = 0; i < randFocus(this.attribs["c"][this.depth]); i++) {
       this.children.push(new Branch(this));
     }
   }
@@ -214,16 +214,21 @@ function childTree(tree) {
   var l = tree.l;
   var w = tree.w;
   if (randInt(1, 100) <= 1) {
-    attrs["l"] = new Randobj(randFocus(new Randobj(0.5, tree.attribs["l"].dev)), randFocus(new Randobj(0.25, tree.attribs["l"].focus)));
+    attrs["c"][0] = new Randobj(Math.round(randFocus(new Randobj(1, tree.attribs["c"][0].dev))), Math.round(randFocus(new Randobj(1, tree.attribs["c"][0].focus))));
   }
-  if (randInt(1, 100) <= 1) {
-    attrs["w"] = new Randobj(randFocus(new Randobj(0.5, tree.attribs["w"].dev)), randFocus(new Randobj(0.25, tree.attribs["w"].focus)));
-  }
-  if (randInt(1, 100) <= 1) {
-    attrs["d"] = new Randobj(randFocus(new Randobj(Math.PI / 2, tree.attribs["d"].dev)), randFocus(new Randobj(Math.PI / 4, tree.attribs["d"].focus)));
-  }
-  if (randInt(1, 100) <= 1) {
-    attrs["c"] = new Randobj(Math.round(randFocus(new Randobj(1, tree.attribs["c"].dev))), Math.round(randFocus(new Randobj(1, tree.attribs["c"].focus))));
+  for (var loooooog = 0; loooooog<maxDepth; loooooog++){
+    if (randInt(1, 100) <= 1) {
+      attrs["l"][loooooog] = new Randobj(randFocus(new Randobj(0.5, tree.attribs["l"][loooooog].dev)), randFocus(new Randobj(0.25, tree.attribs["l"][loooooog].focus)));
+    }
+    if (randInt(1, 100) <= 1) {
+      attrs["w"][loooooog] = new Randobj(randFocus(new Randobj(0.5, tree.attribs["w"][loooooog].dev)), randFocus(new Randobj(0.25, tree.attribs["w"][loooooog].focus)));
+    }
+    if (randInt(1, 100) <= 1) {
+      attrs["d"][loooooog] = new Randobj(randFocus(new Randobj(Math.PI / 2, tree.attribs["d"][loooooog].dev)), randFocus(new Randobj(Math.PI / 4, tree.attribs["d"][loooooog].focus)));
+    }
+    if (randInt(1, 100) <= 1) {
+      attrs["c"][loooooog+1] = new Randobj(Math.round(randFocus(new Randobj(1, tree.attribs["c"][loooooog].dev))), Math.round(randFocus(new Randobj(1, tree.attribs["c"][loooooog].focus))));
+    }
   }
   if (randInt(1, 100) <= 1) {
     attrs["b"] = new Randobj(Math.round(randFocus(new Randobj(1, tree.attribs["b"].dev))), randFocus(new Randobj(1, tree.attribs["b"].focus)));
@@ -240,10 +245,17 @@ function childTree(tree) {
 //Creates a random tree
 function randTree() {
   attrs = {};
-  attrs["l"] = new Randobj(Math.random(), 0.75);
-  attrs["w"] = new Randobj(Math.random(), 0.75);
-  attrs["d"] = new Randobj(90 * Math.PI * Math.random() / 180, Math.PI * randInt(0, 89) / 180);
-  attrs["c"] = new Randobj(randInt(0, 2), randInt(3, 5));
+  attrs["l"] = new Array();
+  attrs["w"] = new Array();
+  attrs["d"] = new Array();
+  attrs["c"] = new Array();
+  attrs["c"].push(new Randobj(randInt(0, 2), randInt(3, 5)));
+  for (var loooooog = 0; loooooog<maxDepth; loooooog++){
+    attrs["l"].push(new Randobj(Math.random(), 0.75));
+    attrs["w"].push(new Randobj(Math.random(), 0.75));
+    attrs["d"].push(new Randobj(90 * Math.PI * Math.random() / 180, Math.PI * randInt(0, 89) / 180));
+    attrs["c"].push(new Randobj(randInt(0, 2), randInt(3, 5)));
+  }
   attrs["b"] = new Randobj(randInt(0, 2), maxDepth);
   return new Tree(attrs, randInt(75, 150), randInt(20, 40));
 }
